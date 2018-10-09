@@ -414,3 +414,140 @@ driest.resp.sgs.vec<-as.vector(driest.resp$flux)
 cohen.d(treatment.vector, control.vector,pooled=TRUE,paired=FALSE,
         na.rm=TRUE, hedges.correction=FALSE,
         conf.level=0.95,noncentral=FALSE)
+
+#asymmetry signifigance tests
+
+anpp.ag.asymm<-aggregate(x.100  ~ subset,mean,data=anpp.ag) #grass and forb
+grass.ag.asymm<-aggregate(gras.100  ~ subset,mean,data=grass.ag) #
+forb.ag.asymm<-aggregate(forb.100  ~ subset,mean,data=forb.ag)
+
+#ANPP grass and forb
+((101.47 - 70.49) - (70.49 - 51.97))/70.49 #.18, positive asymmetry
+
+#anova
+g.f.asym<- function(x) {
+  
+  diff.g.f <- 70.49 - x
+  
+  return(diff.g.f)
+}
+anpp.asym.all<-aggregate(x.100  ~  Plot + subset,g.f.asym,data=anpp.ag)
+anpp.asym.all.wet.extremes<-subset(anpp.asym.all,subset==c("extreme.wet"))
+anpp.asym.all.wet.extremes$anpp<-abs(anpp.asym.all.wet.extremes$x.100)
+par(mfrow=c(2,2)) # init 4 charts in 1 panel
+plot(anpp.asym.all.wet.extremes$anpp)
+shapiro.test(anpp.asym.all.wet.extremes$anpp) #assumption of normality fair
+anpp.asym.all.dry.extremes<-subset(anpp.asym.all,subset==c("extreme.dry"))
+anpp.asym.all.dry.extremes$anpp<-abs(anpp.asym.all.dry.extremes$x.100)
+shapiro.test(anpp.asym.all.dry.extremes$anpp) #assumption of normality fair 
+merge.anpp.extremes<-merge(anpp.asym.all.dry.extremes,anpp.asym.all.wet.extremes,by=c("subset","anpp"),all=TRUE)
+anpp.all.anova<-lm(anpp~subset,data=merge.anpp.extremes)
+anova(anpp.all.anova)
+par(mfrow=c(2,2)) # init 4 charts in 1 panel
+plot(anpp.all.anova)
+
+#anova for differences from median
+anpp.asym.all.nominal<-subset(anpp.ag,subset==c("nominal"))
+shapiro.test(log(anpp.asym.all.nominal$x.100)) #need to log transform to meet assumption
+anpp.asym.all.wet<-subset(anpp.ag,subset==c("extreme.wet"))
+shapiro.test(log(anpp.asym.all.wet$x.100)) #normality assumptions met
+merge.anpp.nominal.wet<-merge(anpp.asym.all.wet,anpp.asym.all.nominal,by=c("subset","x.100"),all=TRUE)
+anova.wet<-lm(log(x.100) ~subset,data=merge.anpp.nominal.wet)
+anova(anova.wet)
+#dry
+anpp.asym.all.dry<-subset(anpp.ag,subset==c("extreme.dry"))
+shapiro.test(log(anpp.asym.all.dry$x.100)) #normality met
+merge.anpp.nominal.dry<-merge(anpp.asym.all.dry,anpp.asym.all.nominal,by=c("subset","x.100"),all=TRUE)
+anova.dry<-lm(log(x.100) ~subset,data=merge.anpp.nominal.dry)
+anova(anova.dry)
+
+#grass biomass
+((87.84 - 65.075) - (65.075 - 50.82))/65.075 # 0.13., positive asymmetry
+
+#anova
+grass.asym<- function(x) {
+  
+  diff.grass <- 65.075 - x
+  
+  return(diff.grass)
+}
+anpp.asym.grass<-aggregate(gras.100  ~  Plot + subset,grass.asym,data=grass.ag)
+anpp.asym.grass.wet.extremes<-subset(anpp.asym.grass,subset==c("extreme.wet"))
+anpp.asym.grass.wet.extremes$anpp<-abs(anpp.asym.grass.wet.extremes$gras.100)
+shapiro.test(anpp.asym.grass.wet.extremes$anpp) #assumption of normality fair
+anpp.asym.grass.dry.extremes<-subset(anpp.asym.grass,subset==c("extreme.dry"))
+anpp.asym.grass.dry.extremes$anpp<-abs(anpp.asym.grass.dry.extremes$gras.100)
+shapiro.test(anpp.asym.grass.dry.extremes$anpp) #assumption of normality fair 
+merge.grass.extremes<-merge(anpp.asym.grass.dry.extremes,anpp.asym.grass.wet.extremes,by=c("subset","anpp"),all=TRUE)
+anpp.grass.anova<-lm(anpp~subset,data=merge.grass.extremes)
+anova(anpp.grass.anova)
+par(mfrow=c(2,2)) # init 4 charts in 1 panel
+plot(anpp.grass.anova)
+
+#anova for differences from median
+anpp.asym.grass.nominal<-subset(grass.ag,subset==c("nominal"))
+shapiro.test(log(anpp.asym.grass.nominal$gras.100)) #need to log transform to meet assumption
+anpp.asym.grass.wet<-subset(grass.ag,subset==c("extreme.wet"))
+shapiro.test(log(anpp.asym.grass.wet$gras.100)) #lognormal
+merge.anpp.grass.nominal.wet<-merge(anpp.asym.grass.wet,anpp.asym.grass.nominal,by=c("subset","gras.100"),all=TRUE)
+anova.grass.wet<-lm(log(gras.100) ~subset,data=merge.anpp.grass.nominal.wet)
+anova(anova.grass.wet)
+#dry
+anpp.asym.grass.nominal<-subset(grass.ag,subset==c("nominal"))
+shapiro.test(log(anpp.asym.grass.nominal$gras.100)) #need to log transform to meet assumption
+anpp.asym.grass.dry<-subset(grass.ag,subset==c("extreme.dry"))
+shapiro.test(log(anpp.asym.grass.dry$gras.100)) #lognormal
+merge.anpp.grass.nominal.dry<-merge(anpp.asym.grass.dry,anpp.asym.grass.nominal,by=c("subset","gras.100"),all=TRUE)
+anova.grass.dry<-lm(log(gras.100) ~subset,data=merge.anpp.grass.nominal.dry)
+anova(anova.grass.dry)
+
+#forb biomass
+((13.63 - 5.41) - (5.41 - 0.86))/5.41 #0.68, positive asymmetry
+
+#anova
+forb.asym<- function(x) {
+  
+  diff.forb <- 5.51 - x
+  
+  return(diff.forb)
+}
+anpp.asym.forb<-aggregate(forb.100  ~  Plot + subset,forb.asym,data=forb.ag)
+anpp.asym.forb.wet.extremes<-subset(anpp.asym.forb,subset==c("extreme.wet"))
+anpp.asym.forb.wet.extremes$anpp<-abs(anpp.asym.forb.wet.extremes$forb.100)
+shapiro.test(log(anpp.asym.forb.wet.extremes$anpp)) #assumption of normality fair
+anpp.asym.forb.dry.extremes<-subset(anpp.asym.forb,subset==c("extreme.dry"))
+anpp.asym.forb.dry.extremes$anpp<-abs(anpp.asym.forb.dry.extremes$forb.100)
+shapiro.test(anpp.asym.forb.dry.extremes$anpp) #assumptions not met even after log transforming
+merge.forb.extremes<-merge(anpp.asym.forb.dry.extremes,anpp.asym.forb.wet.extremes,by=c("subset","anpp"),all=TRUE)
+anpp.forb.anova<-lm(log(anpp)~subset,data=merge.forb.extremes) #n.s.
+anova(anpp.forb.anova) ##n.s.
+#because dry extreme wer enot normal
+kruskal.test(anpp~subset, data = merge.forb.extremes)
+par(mfrow=c(2,2)) # init 4 charts in 1 panel
+plot(anpp.forb.anova)
+
+#anova for differences from median
+anpp.asym.forb.nominal<-subset(forb.ag,subset==c("nominal"))
+shapiro.test(sqrt(anpp.asym.forb.nominal$forb.100)) #cant make normal
+anpp.asym.forb.wet<-subset(forb.ag,subset==c("extreme.wet"))
+shapiro.test(log(anpp.asym.forb.wet$forb.100)) #lognormal, but median not normal
+merge.anpp.forb.nominal.wet<-merge(anpp.asym.forb.wet,anpp.asym.forb.nominal,by=c("subset","forb.100"),all=TRUE)
+
+#kruskall-wallis test due to lack of normality
+kruskal.test(forb.100 ~subset, data = merge.anpp.forb.nominal.wet)
+hist(sqrt(anpp.asym.forb.nominal$forb.100))
+
+#dry
+anpp.asym.forb.nominal<-subset(forb.ag,subset==c("nominal"))
+shapiro.test(log(anpp.asym.forb.nominal$forb.100)) #cant make normal
+anpp.asym.forb.dry<-subset(forb.ag,subset==c("extreme.dry"))
+shapiro.test(log(anpp.asym.forb.dry$forb.100)) #cant maike normal
+merge.anpp.forb.nominal.dry<-merge(anpp.asym.forb.dry,anpp.asym.forb.nominal,by=c("subset","forb.100"),all=TRUE)
+
+#kruskall-wallis test instead
+kruskal.test(forb.100 ~subset, data = merge.anpp.forb.nominal.dry)
+
+
+
+#% increase
+(0.18-0.13)/0.13 #%27
