@@ -2,31 +2,23 @@
 
 #input datafiles
 anpp.sgs<-read.csv(file.choose(),header=TRUE) #anpp dataset
-vwc<-read.csv(file.choose(),header=TRUE) #soil moisture data
-n<-read.csv(file.choose(),header=TRUE) #soil nitrogen data
+vwc<-read.csv(file.choose(),header=TRUE) #soil moisture dataset
+n<-read.csv(file.choose(),header=TRUE) #soil nitrogen dataset
 
 #Averaging sub plot values to produce single value per plot
-anpp.ag<-aggregate(x.100 ~ Plot + mm + percentile + vwc.20cm + subset + Block,mean,data=anpp.sgs)
-grass.ag<-aggregate(gras.100 ~ Plot + mm + percentile + vwc.20cm + subset + Block,mean,data=anpp.sgs)
-forb.ag<-aggregate(forb.100 ~ Plot + mm + percentile + vwc.20cm + subset + Block,mean,data=anpp.sgs)
-vwc.ag<-aggregate(calibrated~  mm,mean,data=vwc)
-plot(gras.100~mm,data=grass.ag)
+anpp.ag<-aggregate(x.100 ~ Plot + mm + percentile + vwc.20cm + subset + Block,mean,data=anpp.sgs) #total anpp
+grass.ag<-aggregate(gras.100 ~ Plot + mm + percentile + vwc.20cm + subset + Block,mean,data=anpp.sgs) #grass anpp
+forb.ag<-aggregate(forb.100 ~ Plot + mm + percentile + vwc.20cm + subset + Block,mean,data=anpp.sgs) #forb anpp
+vwc.ag<-aggregate(calibrated~  mm,mean,data=vwc) #mean soil moisture per mm of precip
+
+plot(gras.100~mm,data=grass.ag) #see how it looks
 plot(x.100~mm,data=anpp.ag)
+
 #moisture and N linear models
 lm.vwc<-lm(calibrated ~  mm,data=vwc.ag)
 summary(lm.vwc)
 n.lm<-lm(total.N~mm,data=n.sgs)
 summary(n.lm)
-
-#after ifentifying influential outlier observation
-#precipitation
-anpp.ag2<-anpp.ag[-4,]
-grass.ag2<-grass.ag[-22,]
-anpp.precip<-aggregate(x.100~mm,mean,data=anpp.ag2)
-
-
-#soil moisture
-#none found
 
 #identifying potential outliers
 #leverage
@@ -61,12 +53,20 @@ outlierTest(linear.anpp.sgs.moisture) #no outliers in response to moisture
 #grass 
 linear.grass.sgs.vwc<-lm(gras.100~vwc.20cm,data=grass.ag)
 outlierTest(linear.grass.sgs.vwc) #no outliers
+
 #testing block effects
 library(nlme)
 anpp.block<-lme(x.100 ~ mm + vwc.20cm + Block,random=~1|Plot,data=anpp.ag2)
 summary(anpp.block) #no block effect
 
-#asymm, calculated with all data so comparisons are derived from the same dataset.
+#removing influential outliers and observation
+#precipitation
+anpp.ag2<-anpp.ag[-4,]
+grass.ag2<-grass.ag[-22,]
+anpp.precip<-aggregate(x.100~mm,mean,data=anpp.ag2)
+
+#none for precip
+#asymmetry, *calculated with all data so comparisons are derived from the same dataset*
 head(anpp.ag)
 anpp.ag.asymm<-aggregate(x.100  ~ subset,mean,data=anpp.ag) #grass and forb
 grass.ag.asymm<-aggregate(gras.100  ~ subset,mean,data=grass.ag) #
@@ -80,7 +80,7 @@ forb.ag.asymm<-aggregate(forb.100  ~ subset,mean,data=forb.ag)
 ((13.63 - 5.41) - (5.41 - 0.86))/5.41 #0.68, positive asymmetry
 
 #% increase
-(0.18-0.13)/0.18 #%27
+(0.18-0.13)/0.13 # 38.5%
 
 #linearmodel with precip
 anpp.sgs.linear<-lm(x.100~mm,data=anpp.ag2)
@@ -99,7 +99,7 @@ plot(x.100~mm,data=anpp.ag2)
 abline(lm(x.100~mm,data=anpp.ag2))
 #find starting parameters
 lm(logit(x.100/300)~mm,anpp.ag2)
-#run model: logistic growth since the data appears to conform to a logsitic relationship
+#run nonlinear model
 anpp.sgs.nonlinear<- nls2(x.100 ~ theta1/(1 + exp(-(theta2 + theta3*mm))),
                           start=list(theta1 = 300, theta2 =   -1.815647   , theta3 = 0.004101),data=anpp.ag2, trace=TRUE)
 summary(anpp.sgs.nonlinear)
@@ -114,6 +114,7 @@ predictanpp.sgs<-data.frame(xNew,yNew)
 predictanpp.sgs
 summary(predictanpp)
 lines(xNew,yNew)
+
 #comparing linear forsus nonlinear model:
 
 #AIC weights
@@ -124,9 +125,7 @@ L <- exp(-0.5 * delta)      #relative likelihoods
 w <- L/sum(L) #AIC weights or posterier probabilities of the models
 w #AIC weights
 
-
-
-#ANPP grass and forb responses to vwc 20 cm
+#ANPP grass and forb (total ANPP) responses to vwc 20 cm
 
 #response to soil moisture
 anpp.sgs.vwc.linear<-lm(x.100~vwc.20cm,data=anpp.ag)
@@ -137,7 +136,7 @@ abline(lm(x.100~vwc.20cm,data=anpp.ag))
 #find starting parameters
 lm(logit(x.100/300)~vwc.20cm,anpp.ag)
 
-#run model: logistic growth since the data appears to conform to a logsitic relationship
+#run nonlinear model with starting parameter
 anpp.sgs.vwc.nonlinear.model<- nls2(x.100~ theta1/(1 + exp(-(theta2 + theta3*vwc.20cm))),
                                     start=list(theta1 = 300, theta2 = -3.9641   , theta3 = 0.1604  ),data=anpp.ag, trace=TRUE)
 
@@ -148,8 +147,8 @@ xNew <- seq(r[1],r[2])
 yNew <- predict(anpp.sgs.vwc.nonlinear.model,list(vwc.20cm = xNew))
 predictanpp.sgs.vwc<-data.frame(xNew,yNew)
 lines(xNew,yNew)
-#comparing linear forsus nonlinear model:
 
+#comparing linear forsus nonlinear model:
 #AIC weights
 AIC(anpp.sgs.vwc.nonlinear.model,anpp.sgs.vwc.linear)
 x <- c(386.8048, 385.9754)         # stores two AIC values in a vector
@@ -159,7 +158,6 @@ w <- L/sum(L) #AIC weights or posterier probabilities of the models
 w
 
 #looking at grass responses to precipitation
-
 #linearmodel with precip
 grass.sgs.linear<-lm(gras.100~mm,data=grass.ag2)
 summary(grass.sgs.linear) #r-square = 0.47
@@ -172,7 +170,8 @@ abline(lm(gras.100~mm,data=grass.ag2))
 
 #find starting parmters
 lm(logit(gras.100/300)~mm,grass.ag2)
-#run model: logistic growth since the data appears to conform to a logsitic relationship
+
+#run nonlinear model with starting parameters
 grass.sgs.nonlinear<- nls2(gras.100 ~ theta1/(1 + exp(-(theta2 + theta3*mm))),
                            start=list(theta1 = 300, theta2 =   -1.779922   , theta3 =  0.003081     ),data=grass.ag2, trace=TRUE)
 
@@ -188,7 +187,6 @@ summary(predictanpp)
 lines(xNew,yNew)
 
 #comparing linear forsus nonlinear model:
-
 #AIC weights
 AIC(grass.sgs.nonlinear,grass.sgs.linear)
 x <- c(360.9314, 359.0931)         # stores two AIC values in a vector
@@ -197,8 +195,7 @@ L <- exp(-0.5 * delta)      #relative likelihoods
 w <- L/sum(L) #AIC weights or posterier probabilities of the models
 w
 
-#ANPP grass responses to vwc 20 cm
-
+#ANPP grass responses to vwc 20 cm (soil moisture)
 #response to soil moisture
 anpp.grass.sgs.vwc.linear<-lm(gras.100~vwc.20cm,data=grass.ag)
 summary(anpp.grass.sgs.vwc.linear) #r-square is 0.53
@@ -230,14 +227,15 @@ w <- L/sum(L) #AIC weights or posterier probabilities of the models
 w
 
 #effect sizes using all data like asymmetry
-?cohen.d
+
 library(effsize)
 #ANPP grass + forb
+#produce datasets with the specific subsets
 mean.anpp.sgs<-subset(anpp.ag,subset=="nominal",na.rm=TRUE)
 wettest.anpp.sgs<-subset(anpp.ag,subset=="extreme.wet",na.rm=TRUE)
 driest.anpp.sgs<-subset(anpp.ag,subset=="extreme.dry",na.rm=TRUE)
 
-#vector
+#create vectors for input into effect size function
 mean.anpp.sgs.vec<-as.vector(mean.anpp.sgs$x.100)
 wettest.anpp.sgs.vec<-as.vector(wettest.anpp.sgs$x.100)
 driest.anpp.sgs.vec<-as.vector(driest.anpp.sgs$x.100)
@@ -252,16 +250,17 @@ mean.grass.sgs.vec<-as.vector(mean.grass.sgs$gras.100)
 wettest.grass.sgs.vec<-as.vector(wettest.grass.sgs$gras.100)
 driest.grass.sgs.vec<-as.vector(driest.grass.sgs$gras.100)
 
-cohen.d(driest.grass.sgs.vec, mean.grass.sgs.vec,pooled=TRUE,paired=FALSE,
+#effect size function: input the wet or dry extreme vector, then the control vector second
+cohen.d(treatent.vector, control.vector,pooled=TRUE,paired=FALSE,
         na.rm=TRUE, hedges.correction=FALSE,
         conf.level=0.95,noncentral=FALSE)
 
 #species composition analysis
 
-comp.sgs<-read.csv(file.choose(),header=TRUE)
+comp.sgs<-read.csv(file.choose(),header=TRUE) #species compsoition file
 head(comp.sgs)
 
-
+#upload needed libraries
 library(reshape2)
 library(BiodiversityR)
 library(vegan)
@@ -274,12 +273,13 @@ sim<-with(comp.sgs,simper(simp,group))
 summary(sim,ordered=TRUE,digits=2) 
 lapply(sim,FUN=function(x){x$overall}) 
 
-#permanova
-#bray curtis distance analysis
+#permanova with bray curtis distance analysis
 extreme<-subset(comp.sgs,subgroup=="extreme")
 adonis(extreme[,7:31]~extreme$group,data=extreme,method="bray") #communities differed by year
 
-#SOIL RESPIRATION
+#graphing code not displayed
+
+#SOIL RESPIRATION ANLYSIS
 
 #input datafiles
 resp<-read.csv(file.choose(),header=TRUE) #soil respiration datafile
@@ -291,7 +291,7 @@ linear.resp.mm<-lm(flux~mm,data=resp)
 summary(linear.resp)
 plot(flux~calibrated,data=resp)
 #residuals
-qqnorm(linear.resp$res) #implies a resonable degree of normality, except at the tails, indicates nonlinearity
+qqnorm(linear.resp$res) #implies a resonable degree of normality, except at the tails, which suggests nonlinearity
 qqline(linear.resp$res)
 
 #leverage
@@ -318,12 +318,10 @@ library(car)
 plot(flux~temp.C,data=resp.2)
 plot(temp.C~vwc.20.cm,data=resp.2)
 #testing block effects
-
 resp.lme<-lme(flux~mm + calibrated + Block, random=~1|Plot,data=resp,na.action = na.exclude)
 summary(resp.lm) #no block effect
 
-
-#nonlinear least squares model
+#nonlinear least squares model. Same process as ANPP.
 library(nls2)
 library(aod)
 library(nlstools)
@@ -340,7 +338,8 @@ resp.lm.moisture<-lm(flux~calibrated,data=resp.2)
 summary(resp.lm.moisture) #r-sauare = 0.53
 
 lm(logit(flux/10)~calibrated,resp.2)
-#run model: logistic growth since the data appears to conform to a logsitic relationship
+
+#run nonlinear model with starting parameters
 resp.nonlinearmodel.moisture<- nls2(flux~ theta1/(1 + exp(-(theta2 + theta3*calibrated))),
                                     start=list(theta1 = 10, theta2 = -3.7021  , theta3 = 0.1367 ),data=resp.2, trace=TRUE)
 summary(resp.nonlinearmodel.precip)
@@ -379,7 +378,7 @@ abline(lm(flux~mm,data=resp.2))
 
 #find starting parmters
 lm(logit(flux/10)~mm,resp)
-#run model: logistic growth since the data appears to conform to a logsitic relationship
+#run nonlinear model with starting parameters
 resp.nonlinear.model.mm<- nls2(flux~ theta1/(1 + exp(-(theta2 + theta3*mm))),
                                start=list(theta1 = 10, theta2 =    -2.116397    , theta3 = 0.005367  ),data=resp, trace=TRUE)
 
@@ -399,7 +398,7 @@ predictresp
 summary(predictresp)
 lines(xNew,yNew)
 
-#effect sizes
+#effect sizes. same process as ANPP
 
 library(effsize)
 mean.resp<-subset(resp,subsample=="nominal",na.rm=TRUE)
@@ -415,38 +414,47 @@ cohen.d(treatment.vector, control.vector,pooled=TRUE,paired=FALSE,
         na.rm=TRUE, hedges.correction=FALSE,
         conf.level=0.95,noncentral=FALSE)
 
+#ADDITIONAL ANALYSES
 #asymmetry signifigance tests
 
 anpp.ag.asymm<-aggregate(x.100  ~ subset,mean,data=anpp.ag) #grass and forb
 grass.ag.asymm<-aggregate(gras.100  ~ subset,mean,data=grass.ag) #
 forb.ag.asymm<-aggregate(forb.100  ~ subset,mean,data=forb.ag)
 
-#ANPP grass and forb
-((101.47 - 70.49) - (70.49 - 51.97))/70.49 #.18, positive asymmetry
 
-#anova
+#tsting whether asymetry of wet and dry extremes were significantly different
+#apply this function for anova analyses
 g.f.asym<- function(x) {
   
   diff.g.f <- 70.49 - x
   
   return(diff.g.f)
 }
+
+#apply function
+#use datasets with all data
 anpp.asym.all<-aggregate(x.100  ~  Plot + subset,g.f.asym,data=anpp.ag)
+
+#wet extreme subset
 anpp.asym.all.wet.extremes<-subset(anpp.asym.all,subset==c("extreme.wet"))
-anpp.asym.all.wet.extremes$anpp<-abs(anpp.asym.all.wet.extremes$x.100)
+anpp.asym.all.wet.extremes$anpp<-abs(anpp.asym.all.wet.extremes$x.100) #absolute value
 par(mfrow=c(2,2)) # init 4 charts in 1 panel
 plot(anpp.asym.all.wet.extremes$anpp)
 shapiro.test(anpp.asym.all.wet.extremes$anpp) #assumption of normality fair
+
+#dry extremes
 anpp.asym.all.dry.extremes<-subset(anpp.asym.all,subset==c("extreme.dry"))
-anpp.asym.all.dry.extremes$anpp<-abs(anpp.asym.all.dry.extremes$x.100)
+anpp.asym.all.dry.extremes$anpp<-abs(anpp.asym.all.dry.extremes$x.100) #absolute value
 shapiro.test(anpp.asym.all.dry.extremes$anpp) #assumption of normality fair 
+
+#combine absoulute values of asymmetries into one dataset
 merge.anpp.extremes<-merge(anpp.asym.all.dry.extremes,anpp.asym.all.wet.extremes,by=c("subset","anpp"),all=TRUE)
 anpp.all.anova<-lm(anpp~subset,data=merge.anpp.extremes)
 anova(anpp.all.anova)
 par(mfrow=c(2,2)) # init 4 charts in 1 panel
 plot(anpp.all.anova)
 
-#anova for differences from median
+#anova for differences from nominal anpp
 anpp.asym.all.nominal<-subset(anpp.ag,subset==c("nominal"))
 shapiro.test(log(anpp.asym.all.nominal$x.100)) #need to log transform to meet assumption
 anpp.asym.all.wet<-subset(anpp.ag,subset==c("extreme.wet"))
@@ -454,6 +462,7 @@ shapiro.test(log(anpp.asym.all.wet$x.100)) #normality assumptions met
 merge.anpp.nominal.wet<-merge(anpp.asym.all.wet,anpp.asym.all.nominal,by=c("subset","x.100"),all=TRUE)
 anova.wet<-lm(log(x.100) ~subset,data=merge.anpp.nominal.wet)
 anova(anova.wet)
+
 #dry
 anpp.asym.all.dry<-subset(anpp.ag,subset==c("extreme.dry"))
 shapiro.test(log(anpp.asym.all.dry$x.100)) #normality met
@@ -461,10 +470,11 @@ merge.anpp.nominal.dry<-merge(anpp.asym.all.dry,anpp.asym.all.nominal,by=c("subs
 anova.dry<-lm(log(x.100) ~subset,data=merge.anpp.nominal.dry)
 anova(anova.dry)
 
+#applying same analyses to grass anpp
 #grass biomass
-((87.84 - 65.075) - (65.075 - 50.82))/65.075 # 0.13., positive asymmetry
-
+#mean anpp at nominal precip was 65.075
 #anova
+
 grass.asym<- function(x) {
   
   diff.grass <- 65.075 - x
@@ -472,56 +482,74 @@ grass.asym<- function(x) {
   return(diff.grass)
 }
 anpp.asym.grass<-aggregate(gras.100  ~  Plot + subset,grass.asym,data=grass.ag)
+
+#wet extremes
 anpp.asym.grass.wet.extremes<-subset(anpp.asym.grass,subset==c("extreme.wet"))
 anpp.asym.grass.wet.extremes$anpp<-abs(anpp.asym.grass.wet.extremes$gras.100)
 shapiro.test(anpp.asym.grass.wet.extremes$anpp) #assumption of normality fair
+
+#dry extremes
 anpp.asym.grass.dry.extremes<-subset(anpp.asym.grass,subset==c("extreme.dry"))
 anpp.asym.grass.dry.extremes$anpp<-abs(anpp.asym.grass.dry.extremes$gras.100)
 shapiro.test(anpp.asym.grass.dry.extremes$anpp) #assumption of normality fair 
+
+#merge wet and dry
 merge.grass.extremes<-merge(anpp.asym.grass.dry.extremes,anpp.asym.grass.wet.extremes,by=c("subset","anpp"),all=TRUE)
 anpp.grass.anova<-lm(anpp~subset,data=merge.grass.extremes)
 anova(anpp.grass.anova)
 par(mfrow=c(2,2)) # init 4 charts in 1 panel
 plot(anpp.grass.anova)
 
-#anova for differences from median
+#anova for differences from nominal
 anpp.asym.grass.nominal<-subset(grass.ag,subset==c("nominal"))
 shapiro.test(log(anpp.asym.grass.nominal$gras.100)) #need to log transform to meet assumption
+
+#wet extremes
 anpp.asym.grass.wet<-subset(grass.ag,subset==c("extreme.wet"))
 shapiro.test(log(anpp.asym.grass.wet$gras.100)) #lognormal
 merge.anpp.grass.nominal.wet<-merge(anpp.asym.grass.wet,anpp.asym.grass.nominal,by=c("subset","gras.100"),all=TRUE)
 anova.grass.wet<-lm(log(gras.100) ~subset,data=merge.anpp.grass.nominal.wet)
 anova(anova.grass.wet)
+
 #dry
 anpp.asym.grass.nominal<-subset(grass.ag,subset==c("nominal"))
 shapiro.test(log(anpp.asym.grass.nominal$gras.100)) #need to log transform to meet assumption
 anpp.asym.grass.dry<-subset(grass.ag,subset==c("extreme.dry"))
 shapiro.test(log(anpp.asym.grass.dry$gras.100)) #lognormal
+#merge dataset
 merge.anpp.grass.nominal.dry<-merge(anpp.asym.grass.dry,anpp.asym.grass.nominal,by=c("subset","gras.100"),all=TRUE)
 anova.grass.dry<-lm(log(gras.100) ~subset,data=merge.anpp.grass.nominal.dry)
 anova(anova.grass.dry)
 
+#apply same analyses to forb biomass
 #forb biomass
 ((13.63 - 5.41) - (5.41 - 0.86))/5.41 #0.68, positive asymmetry
 
 #anova
 forb.asym<- function(x) {
   
-  diff.forb <- 5.51 - x
+  diff.forb <- 5.41 - x
   
   return(diff.forb)
 }
 anpp.asym.forb<-aggregate(forb.100  ~  Plot + subset,forb.asym,data=forb.ag)
+
+#extreme wet
 anpp.asym.forb.wet.extremes<-subset(anpp.asym.forb,subset==c("extreme.wet"))
 anpp.asym.forb.wet.extremes$anpp<-abs(anpp.asym.forb.wet.extremes$forb.100)
 shapiro.test(log(anpp.asym.forb.wet.extremes$anpp)) #assumption of normality fair
+
+#extreme dry
 anpp.asym.forb.dry.extremes<-subset(anpp.asym.forb,subset==c("extreme.dry"))
 anpp.asym.forb.dry.extremes$anpp<-abs(anpp.asym.forb.dry.extremes$forb.100)
 shapiro.test(anpp.asym.forb.dry.extremes$anpp) #assumptions not met even after log transforming
+
+#merge datasets
 merge.forb.extremes<-merge(anpp.asym.forb.dry.extremes,anpp.asym.forb.wet.extremes,by=c("subset","anpp"),all=TRUE)
 anpp.forb.anova<-lm(log(anpp)~subset,data=merge.forb.extremes) #n.s.
 anova(anpp.forb.anova) ##n.s.
-#because dry extreme wer enot normal
+
+#because dry extreme were not normal
 kruskal.test(anpp~subset, data = merge.forb.extremes)
 par(mfrow=c(2,2)) # init 4 charts in 1 panel
 plot(anpp.forb.anova)
@@ -541,13 +569,9 @@ hist(sqrt(anpp.asym.forb.nominal$forb.100))
 anpp.asym.forb.nominal<-subset(forb.ag,subset==c("nominal"))
 shapiro.test(log(anpp.asym.forb.nominal$forb.100)) #cant make normal
 anpp.asym.forb.dry<-subset(forb.ag,subset==c("extreme.dry"))
-shapiro.test(log(anpp.asym.forb.dry$forb.100)) #cant maike normal
+shapiro.test(log(anpp.asym.forb.dry$forb.100)) #cant make normal
 merge.anpp.forb.nominal.dry<-merge(anpp.asym.forb.dry,anpp.asym.forb.nominal,by=c("subset","forb.100"),all=TRUE)
 
 #kruskall-wallis test instead
 kruskal.test(forb.100 ~subset, data = merge.anpp.forb.nominal.dry)
 
-
-
-#% increase
-(0.18-0.13)/0.13 #%27
