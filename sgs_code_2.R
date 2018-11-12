@@ -13,7 +13,7 @@ vwc.ag<-aggregate(calibrated~  mm,mean,data=vwc) #mean soil moisture per mm of p
 
 plot(gras.100~mm,data=grass.ag) #see how it looks
 plot(x.100~mm,data=anpp.ag)
-
+version
 #moisture and N linear models
 lm.vwc<-lm(calibrated ~  mm,data=vwc.ag)
 summary(lm.vwc)
